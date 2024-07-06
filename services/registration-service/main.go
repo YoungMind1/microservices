@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -18,25 +19,25 @@ import (
 var client *mongo.Client
 
 type Registration struct {
-	ID      primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
-	UserID  string             `json:"user_id" bson:"user_id"`
-	EventID string             `json:"event_id" bson:"event_id"`
-	Deleted bool               `json:"deleted" bson:"deleted"`
+	ID       primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
+	UserID   string             `json:"user_id" bson:"user_id"`
+	EventID  string             `json:"event_id" bson:"event_id"`
+	Canceled bool               `json:"canceled" bson:"canceled"`
 }
 
-func register(w http.ResponseWriter, r *http.Request) {
+func store(w http.ResponseWriter, r *http.Request) {
 	var registration Registration
 	if err := json.NewDecoder(r.Body).Decode(&registration); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-    if registration.UserID == "" || registration.EventID == "" {
+	if registration.UserID == "" || registration.EventID == "" {
 		http.Error(w, "user_id and event_id are required", http.StatusBadRequest)
 		return
-    }
+	}
 
-	resp, err := http.Get("http://user-service/get?id=" + url.QueryEscape(registration.UserID))
+	resp, err := http.Get("http://nginx/api/users/" + url.QueryEscape(registration.UserID))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -47,7 +48,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-    resp, err = http.Get("http://event-service/get?id=" + url.QueryEscape(registration.EventID))
+	resp, err = http.Get("http://nginx/api/events/" + url.QueryEscape(registration.EventID))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -60,13 +61,13 @@ func register(w http.ResponseWriter, r *http.Request) {
 
 	collection := client.Database("registrationdb").Collection("registrations")
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-    err = collection.FindOne(ctx, bson.M{"name": registration.UserID, "email": registration.EventID, "canceled": false}).Err()
-    if err != mongo.ErrNoDocuments {
+	err = collection.FindOne(ctx, bson.M{"user_id": registration.UserID, "event_id": registration.EventID, "canceled": false}).Err()
+	if err != mongo.ErrNoDocuments {
 		http.Error(w, "This user has already registered to this event", http.StatusBadRequest)
 		return
-    }
+	}
 
-	registration.Deleted = false
+	registration.Canceled = false
 	ctx, _ = context.WithTimeout(context.Background(), 10*time.Second)
 	result, err := collection.InsertOne(ctx, registration)
 	if err != nil {
@@ -79,7 +80,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 }
 
 func cancelRegistration(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get("id")
+	id := mux.Vars(r)["id"]
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		http.Error(w, "Invalid ID", http.StatusBadRequest)
@@ -88,7 +89,7 @@ func cancelRegistration(w http.ResponseWriter, r *http.Request) {
 
 	collection := client.Database("registrationdb").Collection("registrations")
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-    _, err = collection.UpdateOne(ctx, bson.M{"_id": objID}, bson.M{"$set": bson.M{"deleted": true}})
+	_, err = collection.UpdateOne(ctx, bson.M{"_id": objID}, bson.M{"$set": bson.M{"canceled": true}})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -97,8 +98,8 @@ func cancelRegistration(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func getRegistration(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get("id")
+func show(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		http.Error(w, "Invalid ID", http.StatusBadRequest)
@@ -132,8 +133,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	http.HandleFunc("/register", register)
-	http.HandleFunc("/cancel", cancelRegistration)
-	http.HandleFunc("/get", getRegistration)
-	log.Fatal(http.ListenAndServe(":80", nil))
+	r := mux.NewRouter()
+	r.HandleFunc("/create", store).Methods("POST")
+	r.HandleFunc("/{id}/cancel", cancelRegistration).Methods("PUT")
+	r.HandleFunc("/{id}", show).Methods("GET")
+	log.Fatal(http.ListenAndServe(":80", r))
 }

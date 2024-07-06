@@ -1,17 +1,18 @@
 package main
 
 import (
-    "context"
-    "encoding/json"
-    "log"
-    "net/http"
-    "time"
+	"context"
+	"encoding/json"
+	"log"
+	"net/http"
+	"time"
 
-    "go.mongodb.org/mongo-driver/bson"
-    "go.mongodb.org/mongo-driver/bson/primitive"
-    "go.mongodb.org/mongo-driver/mongo"
-    "go.mongodb.org/mongo-driver/mongo/options"
-    "go.mongodb.org/mongo-driver/mongo/readpref"
+	"github.com/gorilla/mux"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 var client *mongo.Client
@@ -22,7 +23,7 @@ type User struct {
     Email string             `json:"email" bson:"email"`
 }
 
-func createUser(w http.ResponseWriter, r *http.Request) {
+func store(w http.ResponseWriter, r *http.Request) {
     var user User
     if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
         http.Error(w, err.Error(), http.StatusBadRequest)
@@ -41,8 +42,8 @@ func createUser(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(user)
 }
 
-func getUser(w http.ResponseWriter, r *http.Request) {
-    id := r.URL.Query().Get("id")
+func show(w http.ResponseWriter, r *http.Request) {
+    id := mux.Vars(r)["id"]
     objID, err := primitive.ObjectIDFromHex(id)
     if err != nil {
         http.Error(w, "Invalid ID", http.StatusBadRequest)
@@ -61,8 +62,8 @@ func getUser(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(user)
 }
 
-func updateUser(w http.ResponseWriter, r *http.Request) {
-    id := r.URL.Query().Get("id")
+func update(w http.ResponseWriter, r *http.Request) {
+    id := mux.Vars(r)["id"]
     objID, err := primitive.ObjectIDFromHex(id)
     if err != nil {
         http.Error(w, "Invalid ID", http.StatusBadRequest)
@@ -87,8 +88,8 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(user)
 }
 
-func deleteUser(w http.ResponseWriter, r *http.Request) {
-    id := r.URL.Query().Get("id")
+func destroy(w http.ResponseWriter, r *http.Request) {
+    id := mux.Vars(r)["id"]
     objID, err := primitive.ObjectIDFromHex(id)
     if err != nil {
         http.Error(w, "Invalid ID", http.StatusBadRequest)
@@ -121,10 +122,11 @@ func main() {
         log.Fatal(err)
     }
 
-    http.HandleFunc("/create", createUser)
-    http.HandleFunc("/get", getUser)
-    http.HandleFunc("/update", updateUser)
-    http.HandleFunc("/delete", deleteUser)
-    log.Fatal(http.ListenAndServe(":80", nil))
+    r := mux.NewRouter()
+    r.HandleFunc("/create", store).Methods("POST")
+    r.HandleFunc("/{id}", show).Methods("GET")
+    r.HandleFunc("/{id}", update).Methods("PUT")
+    r.HandleFunc("/{id}", destroy).Methods("DELETE")
+    log.Fatal(http.ListenAndServe(":80", r))
 }
 
