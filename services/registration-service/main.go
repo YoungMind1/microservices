@@ -58,7 +58,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	collection := client.Database("eventdb").Collection("registrations")
+	collection := client.Database("registrationdb").Collection("registrations")
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
     err = collection.FindOne(ctx, bson.M{"name": registration.UserID, "email": registration.EventID, "canceled": false}).Err()
     if err == mongo.ErrNoDocuments {
@@ -86,7 +86,7 @@ func cancelRegistration(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	collection := client.Database("eventdb").Collection("registrations")
+	collection := client.Database("registrationdb").Collection("registrations")
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
     _, err = collection.UpdateOne(ctx, bson.M{"_id": objID}, bson.M{"$set": bson.M{"deleted": true}})
 	if err != nil {
@@ -106,7 +106,7 @@ func getRegistration(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var registration Registration
-	collection := client.Database("eventdb").Collection("registrations")
+	collection := client.Database("registrationdb").Collection("registrations")
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	err = collection.FindOne(ctx, bson.M{"_id": objID}).Decode(&registration)
 	if err != nil {
@@ -119,7 +119,7 @@ func getRegistration(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	client, _ = mongo.Connect(ctx, options.Client().ApplyURI("mongodb://mongodb:27017"))
+	client, _ = mongo.Connect(ctx, options.Client().ApplyURI("mongodb://registration-mongodb:27017"))
 
 	defer func() {
 		if err := client.Disconnect(ctx); err != nil {

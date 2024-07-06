@@ -111,7 +111,7 @@ func deleteEvent(w http.ResponseWriter, r *http.Request) {
 
 func main() {
     ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-    client, _ = mongo.Connect(ctx, options.Client().ApplyURI("mongodb://mongodb:27017"))
+    client, _ = mongo.Connect(ctx, options.Client().ApplyURI("mongodb://event-mongodb:27017"))
 
     defer func() {
         if err := client.Disconnect(ctx); err != nil {

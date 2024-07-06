@@ -29,7 +29,7 @@ func createUser(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    collection := client.Database("eventdb").Collection("users")
+    collection := client.Database("userdb").Collection("users")
     ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
     result, err := collection.InsertOne(ctx, user)
     if err != nil {
@@ -50,7 +50,7 @@ func getUser(w http.ResponseWriter, r *http.Request) {
     }
 
     var user User
-    collection := client.Database("eventdb").Collection("users")
+    collection := client.Database("userdb").Collection("users")
     ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
     err = collection.FindOne(ctx, bson.M{"_id": objID}).Decode(&user)
     if err != nil {
@@ -75,7 +75,7 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    collection := client.Database("eventdb").Collection("users")
+    collection := client.Database("userdb").Collection("users")
     ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
     _, err = collection.UpdateOne(ctx, bson.M{"_id": objID}, bson.M{"$set": user})
     if err != nil {
@@ -95,7 +95,7 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    collection := client.Database("eventdb").Collection("users")
+    collection := client.Database("userdb").Collection("users")
     ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
     _, err = collection.DeleteOne(ctx, bson.M{"_id": objID})
     if err != nil {
@@ -108,7 +108,7 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 
 func main() {
     ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-    client, _ = mongo.Connect(ctx, options.Client().ApplyURI("mongodb://mongodb:27017"))
+    client, _ = mongo.Connect(ctx, options.Client().ApplyURI("mongodb://user-mongodb:27017"))
 
     defer func() {
         if err := client.Disconnect(ctx); err != nil {

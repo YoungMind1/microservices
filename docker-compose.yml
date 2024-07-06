@@ -1,33 +1,49 @@
 version: '3'
 services:
-  mongodb:
+  user-mongodb:
     image: mongo:latest
-    container_name: mongodb
+    container_name: user-mongodb
     ports:
       - "27017:27017"
     volumes:
-      - mongo_data:/data/db
+      - user-mongodb-data:/data/db
+
+  event-mongodb:
+    image: mongo:latest
+    container_name: event-mongodb
+    ports:
+      - "27018:27017"
+    volumes:
+      - event-mongodb-data:/data/db
+
+  registration-mongodb:
+    image: mongo:latest
+    container_name: registration-mongodb
+    ports:
+      - "27019:27017"
+    volumes:
+      - registration-mongodb-data:/data/db
 
   user-service:
     build:
       context: .
       dockerfile: services/user-service/Dockerfile
     depends_on:
-      - mongodb
+      - user-mongodb
 
   event-service:
     build:
       context: .
       dockerfile: services/event-service/Dockerfile
     depends_on:
-      - mongodb
+      - event-mongodb
 
   registration-service:
     build:
       context: .
       dockerfile: services/registration-service/Dockerfile
     depends_on:
-      - mongodb
+      - registration-mongodb
 
   nginx:
     image: nginx:latest
@@ -41,4 +57,6 @@ services:
       - registration-service
 
 volumes:
-  mongo_data:
+  user-mongodb-data:
+  event-mongodb-data:
+  registration-mongodb-data:
