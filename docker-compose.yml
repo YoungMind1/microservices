@@ -7,6 +7,8 @@ services:
       - "27017:27017"
     volumes:
       - user-mongodb-data:/data/db
+    networks:
+      - user-network
 
   event-mongodb:
     image: mongo:latest
@@ -15,6 +17,8 @@ services:
       - "27018:27017"
     volumes:
       - event-mongodb-data:/data/db
+    networks:
+      - event-network
 
   registration-mongodb:
     image: mongo:latest
@@ -23,6 +27,8 @@ services:
       - "27019:27017"
     volumes:
       - registration-mongodb-data:/data/db
+    networks:
+      - registration-network
 
   user-service:
     build:
@@ -30,6 +36,8 @@ services:
       dockerfile: services/user-service/Dockerfile
     depends_on:
       - user-mongodb
+    networks:
+      - user-network
 
   event-service:
     build:
@@ -37,6 +45,8 @@ services:
       dockerfile: services/event-service/Dockerfile
     depends_on:
       - event-mongodb
+    networks:
+      - event-network
 
   registration-service:
     build:
@@ -44,6 +54,8 @@ services:
       dockerfile: services/registration-service/Dockerfile
     depends_on:
       - registration-mongodb
+    networks:
+      - registration-network
 
   nginx:
     image: nginx:latest
@@ -55,8 +67,17 @@ services:
       - user-service
       - event-service
       - registration-service
+    networks:
+      - user-network
+      - event-network
+      - registration-network
 
 volumes:
   user-mongodb-data:
   event-mongodb-data:
   registration-mongodb-data:
+
+networks:
+  user-network:
+  event-network:
+  registration-network:
