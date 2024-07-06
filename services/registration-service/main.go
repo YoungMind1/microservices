@@ -61,7 +61,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 	collection := client.Database("registrationdb").Collection("registrations")
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
     err = collection.FindOne(ctx, bson.M{"name": registration.UserID, "email": registration.EventID, "canceled": false}).Err()
-    if err == mongo.ErrNoDocuments {
+    if err != mongo.ErrNoDocuments {
 		http.Error(w, "This user has already registered to this event", http.StatusBadRequest)
 		return
     }
